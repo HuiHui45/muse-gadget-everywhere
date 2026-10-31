@@ -39,26 +39,26 @@ class DisplayActivity : Activity() {
      *  right = player card with title/artist/progress/play-pause. */
     private fun renderMediaPlayer(bridge: DeviceBridge, requestTitle: String = "") {
         val player = bridge.media.player
-        // Full-screen soft gradient background (like Douyin design)
-        val bgColors = intArrayOf(
-            android.graphics.Color.parseColor("#E8F4FD"),
-            android.graphics.Color.parseColor("#F5E6F3"),
-            android.graphics.Color.parseColor("#E8F4FD")
-        )
-        val bgDrawable = android.graphics.drawable.GradientDrawable(
-            android.graphics.drawable.GradientDrawable.Orientation.TL_BR, bgColors
-        )
-        // Mascot on the left (not full-screen)
-        val mascotView = android.widget.ImageView(this).apply {
+        // Full-screen background: single image covering the entire interface (like Douyin)
+        val bg = android.widget.ImageView(this).apply {
             try {
-                setImageResource(R.drawable.mascot)
-            } catch (_: Exception) { }
-            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
-            val size = (resources.displayMetrics.widthPixels * 0.38).toInt()
-            layoutParams = android.widget.FrameLayout.LayoutParams(size, size).apply {
-                gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
-                marginStart = dp(48)
+                setImageResource(R.drawable.player_bg)
+            } catch (_: Exception) {
+                // Fallback to gradient if image missing
+                val bgColors = intArrayOf(
+                    android.graphics.Color.parseColor("#E8F4FD"),
+                    android.graphics.Color.parseColor("#F5E6F3"),
+                    android.graphics.Color.parseColor("#E8F4FD")
+                )
+                background = android.graphics.drawable.GradientDrawable(
+                    android.graphics.drawable.GradientDrawable.Orientation.TL_BR, bgColors
+                )
             }
+            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+            )
         }
         // Hidden player surface (audio only)
         val surface = PlayerView(this).apply {
@@ -135,8 +135,7 @@ class DisplayActivity : Activity() {
             addView(Ui.actions(this@DisplayActivity, playPause, close))
         }
         val root = android.widget.FrameLayout(this).apply {
-            background = bgDrawable
-            addView(mascotView)
+            addView(bg)
             addView(surface)
             addView(card)
         }
