@@ -1,4 +1,12 @@
-# Muse Gadget Everywhere
+# Muse Gadget Everywhere (中文定制版)
+
+> **Fork 说明**：本项目 fork 自 [hypery11/muse-gadget-everywhere](https://github.com/hypery11/muse-gadget-everywhere)，原项目版权归 hypery11 所有。本 fork 仅做了以下定制：
+> - 全中文化 UI
+> - 播放器背景换成耿鬼主题图
+> - TTS 播报气泡移至右下角
+> - 包名改为 `com.huihui.musegadget.v2` 以避免签名冲突
+>
+> 如需原版功能，请前往上游仓库。
 
 **Bring Muse to Android hardware.** An open-source runtime that turns Android phones, tablets and TVs into programmable Muse gadgets: display, media, voice, camera and local automation, according to each device’s capabilities. Build new uses with Kotlin and Python. No root. No Termux.
 
