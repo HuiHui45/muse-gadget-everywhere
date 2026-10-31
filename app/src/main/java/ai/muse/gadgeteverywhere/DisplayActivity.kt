@@ -37,7 +37,7 @@ class DisplayActivity : Activity() {
 
     /** Media mode: left = video surface (mascot artwork when audio-only),
      *  right = player card with title/artist/progress/play-pause. */
-    private fun renderMediaPlayer(bridge: DeviceBridge) {
+    private fun renderMediaPlayer(bridge: DeviceBridge, requestTitle: String = "") {
         val player = bridge.media.player
         // Full-screen soft gradient background (like Douyin design)
         val bgColors = intArrayOf(
@@ -81,7 +81,9 @@ class DisplayActivity : Activity() {
         }
         fun refreshMeta() {
             val meta = player.mediaMetadata
-            titleView.text = meta.title?.toString()?.ifBlank { null } ?: getString(R.string.player_unknown_title)
+            titleView.text = meta.title?.toString()?.ifBlank { null }
+                ?: requestTitle.ifBlank { null }
+                ?: getString(R.string.player_unknown_title)
             artistView.text = meta.artist?.toString()?.ifBlank { null } ?: getString(R.string.player_unknown_artist)
         }
         refreshMeta()
@@ -165,7 +167,7 @@ class DisplayActivity : Activity() {
         bridge.screenActivity = java.lang.ref.WeakReference(this)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         if (request.optString("mode") == "media") {
-            renderMediaPlayer(bridge)
+            renderMediaPlayer(bridge, request.optString("title", ""))
             return
         }
         val (scroll, content) = Ui.screenFrame(this)
