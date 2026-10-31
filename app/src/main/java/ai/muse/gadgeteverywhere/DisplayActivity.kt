@@ -39,14 +39,9 @@ class DisplayActivity : Activity() {
      *  right = player card with title/artist/progress/play-pause. */
     private fun renderMediaPlayer(bridge: DeviceBridge) {
         val player = bridge.media.player
-        val mascot = try {
-            val bmp = BitmapFactory.decodeResource(resources, R.drawable.mascot)
-            bmp?.let { android.graphics.drawable.BitmapDrawable(resources, it) }
-        } catch (_: Exception) { null }
         val surface = PlayerView(this).apply {
             this.player = player
             useController = false
-            mascot?.let { setDefaultArtwork(it) }
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
         }
         playerView = surface
