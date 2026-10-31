@@ -24,6 +24,8 @@ class ControlActivity : Activity() {
     private lateinit var content: LinearLayout
     private lateinit var scroll: ScrollView
     private lateinit var connection: TextView
+    private var topStatus: TextView? = null
+    private var topDot: View? = null
     private val navigation = mutableListOf<Button>()
     private var page = 0
     private var message = ""
@@ -62,13 +64,40 @@ class ControlActivity : Activity() {
         selectedCast = state?.getString("cast")
         selectedCastName = state?.getString("castName") ?: ""
         val wide = resources.configuration.screenWidthDp >= 840
+        // Persistent top bar: Muse title left, connection status + Settings right.
+        val topBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setBackgroundColor(getColor(R.color.bg))
+            setPadding(dp(16), dp(10), dp(16), dp(10))
+        }
+        topBar.addView(TextView(this).apply {
+            text = getString(R.string.topbar_title)
+            textSize = 22f
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+            setTextColor(getColor(R.color.ink))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        Ui.dot(this, getColor(R.color.ink_dim)).also { topBar.addView(it); topDot = it }
+        topStatus = TextView(this).apply {
+            text = getString(R.string.topbar_connected)
+            textSize = 14f
+            setTextColor(getColor(R.color.ink_dim))
+            setPadding(0, 0, dp(12), 0)
+        }.also { topBar.addView(it) }
+        topBar.addView(Ui.secondaryButton(this, getString(R.string.topbar_settings)).apply {
+            textSize = 13f
+            minHeight = dp(40)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            setOnClickListener { startActivity(Intent(this@ControlActivity, SettingsActivity::class.java)) }
+        })
         val root = LinearLayout(this).apply {
             orientation = if (wide) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
             setBackgroundColor(getColor(R.color.bg))
             setPadding(dp(if (wide) 40 else 16), dp(if (wide) 24 else 8), dp(if (wide) 40 else 16), dp(if (wide) 24 else 8))
         }
         val sidebar = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val brand = Ui.twoToneTitle(this, "Muse Gadget", if (wide) "\nEverywhere" else "", if (wide) 24f else 20f)
+        val brand = Ui.twoToneTitle(this, "Muse", "助手", if (wide) 24f else 20f)
         connection = Ui.bodyText(this, 13f).apply {
             setTextColor(getColor(R.color.ink_dim))
             setPadding(0, dp(6), 0, dp(16))
@@ -119,7 +148,12 @@ class ControlActivity : Activity() {
         val insetFrame = android.widget.FrameLayout(this).apply {
             fitsSystemWindows = true
             setBackgroundColor(getColor(R.color.bg))
-            addView(root, android.widget.FrameLayout.LayoutParams(-1, -1))
+            val outer = LinearLayout(this@ControlActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(topBar, LinearLayout.LayoutParams(-1, -2))
+                addView(root, LinearLayout.LayoutParams(-1, 0, 1f))
+            }
+            addView(outer, android.widget.FrameLayout.LayoutParams(-1, -1))
         }
         setContentView(insetFrame)
         selectPage(page)
@@ -278,8 +312,10 @@ class ControlActivity : Activity() {
         }
         fun update(view: TextView?, text: String) { if (view != null && view.text.toString() != text) view.text = text }
         update(connection, getString(label)); update(homeState, getString(label))
+        update(topStatus, getString(if (state == "connected") R.string.topbar_connected else label))
         val color = getColor(when(state) { "connected" -> R.color.ok; "error" -> R.color.bad; else -> R.color.ink_dim })
         connection.setTextColor(color)
+        (topDot?.background as? android.graphics.drawable.GradientDrawable)?.setColor(color)
         update(homeHelp, getString(when(state) { "connected" -> R.string.home_connected_help; "unpaired" -> R.string.home_unpaired_help; "stopped", "error", "stopping" -> R.string.home_stopped_help; else -> R.string.home_connecting_help }))
         update(serviceButton, getString(if (GadgetService.lastState in listOf("stopped", "error")) R.string.probe_start_service else R.string.stop_service))
     }

@@ -2,6 +2,8 @@ package ai.muse.gadgeteverywhere
 
 import android.content.Context
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.media3.common.AudioAttributes
@@ -27,6 +29,7 @@ class NativeMedia(private val context: Context, private val emit: (String, JSONO
     private var mediaJob = ""
     private var mediaError: String? = null
     private var tts: TextToSpeech? = null
+    private val main = Handler(Looper.getMainLooper())
     @Volatile private var speechReady = false
     @Volatile private var speechState = "initializing"
     @Volatile private var speechJob = ""
@@ -53,11 +56,13 @@ class NativeMedia(private val context: Context, private val emit: (String, JSONO
             override fun onStart(id: String) { if (id == speechJob) { speechState = "speaking"; GadgetService.playbackActive(true, "speech") } }
             override fun onDone(id: String) {
                 if (id == speechJob) { speechState = "completed"; GadgetService.playbackActive(false, "speech") }
+                main.post { SpeechOverlay.hide() }
                 emit("speech.completed", JSONObject().put("job_id", id))
             }
             @Deprecated("Deprecated in Android")
             override fun onError(id: String) {
                 if (id == speechJob) { speechState = "error"; GadgetService.playbackActive(false, "speech") }
+                main.post { SpeechOverlay.hide() }
                 emit("speech.error", JSONObject().put("job_id", id))
             }
         })
@@ -138,6 +143,7 @@ class NativeMedia(private val context: Context, private val emit: (String, JSONO
         speechJob = UUID.randomUUID().toString()
         speechState = "queued"
         require(tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, speechJob) == TextToSpeech.SUCCESS) { "TTS rejected the utterance" }
+        main.post { SpeechOverlay.show(context) }
         return speechStatus()
     }
 
@@ -149,6 +155,7 @@ class NativeMedia(private val context: Context, private val emit: (String, JSONO
         tts?.stop()
         speechState = "stopped"
         GadgetService.playbackActive(false, "speech")
+        main.post { SpeechOverlay.hide() }
         return speechStatus()
     }
 

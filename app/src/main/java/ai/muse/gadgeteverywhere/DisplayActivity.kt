@@ -10,6 +10,8 @@ import android.os.Looper
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
+import ai.muse.gadgeteverywhere.Ui.dp
 import androidx.media3.ui.PlayerView
 import org.json.JSONArray
 import org.json.JSONObject
@@ -27,9 +29,113 @@ class DisplayActivity : Activity() {
     private var imageBitmap: Bitmap? = null
     private var playerView: PlayerView? = null
     private var job = ""
+    private var progressUpdater: Runnable? = null
+    private var metaListener: androidx.media3.common.Player.Listener? = null
 
     override fun onCreate(state: Bundle?) { super.onCreate(state); render(intent) }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); render(intent) }
+
+    /** Media mode: left = video surface (mascot artwork when audio-only),
+     *  right = player card with title/artist/progress/play-pause. */
+    private fun renderMediaPlayer(bridge: DeviceBridge) {
+        val player = bridge.media.player
+        val mascot = try {
+            BitmapFactory.decodeResource(resources, R.drawable.mascot)
+        } catch (_: Exception) { null }
+        val surface = PlayerView(this).apply {
+            this.player = player
+            useController = false
+            mascot?.let { setDefaultArtwork(it) }
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+        }
+        playerView = surface
+
+        val titleView = TextView(this).apply {
+            textSize = 26f
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+            setTextColor(getColor(R.color.ink))
+            maxLines = 2
+        }
+        val artistView = TextView(this).apply {
+            textSize = 18f
+            setTextColor(getColor(R.color.ink_dim))
+            setPadding(0, dp(6), 0, dp(12))
+        }
+        fun refreshMeta() {
+            val meta = player.mediaMetadata
+            titleView.text = meta.title?.toString()?.ifBlank { null } ?: getString(R.string.player_unknown_title)
+            artistView.text = meta.artist?.toString()?.ifBlank { null } ?: getString(R.string.player_unknown_artist)
+        }
+        refreshMeta()
+        metaListener = object : androidx.media3.common.Player.Listener {
+            override fun onMediaMetadataChanged(metadata: androidx.media3.common.MediaMetadata) = refreshMeta()
+        }.also { player.addListener(it) }
+
+        fun fmt(ms: Long): String {
+            val s = (ms / 1000).coerceAtLeast(0)
+            return "%d:%02d".format(s / 60, s % 60)
+        }
+        val timeView = TextView(this).apply {
+            textSize = 14f
+            setTextColor(getColor(R.color.ink_dim))
+            gravity = android.view.Gravity.END
+            setPadding(0, dp(4), 0, dp(8))
+        }
+        var seeking = false
+        val seek = android.widget.SeekBar(this).apply {
+            max = 1000
+            setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(bar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                    if (fromUser && player.duration > 0) player.seekTo(progress * player.duration / 1000)
+                }
+                override fun onStartTrackingTouch(bar: android.widget.SeekBar?) { seeking = true }
+                override fun onStopTrackingTouch(bar: android.widget.SeekBar?) { seeking = false }
+            })
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        val playPause = Ui.primaryButton(this, getString(R.string.player_pause)).apply {
+            setOnClickListener {
+                if (player.isPlaying) player.pause() else player.play()
+                text = getString(if (player.isPlaying) R.string.player_pause else R.string.player_play)
+            }
+        }
+        val close = Ui.secondaryButton(this, getString(R.string.close_screen)).apply {
+            setOnClickListener { finish() }
+        }
+        val card = Ui.card(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = dp(24)
+            }
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            addView(titleView)
+            addView(artistView)
+            addView(seek)
+            addView(timeView)
+            addView(Ui.actions(this@DisplayActivity, playPause, close))
+        }
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setBackgroundColor(getColor(R.color.bg))
+            setPadding(dp(32), dp(32), dp(32), dp(32))
+            addView(surface)
+            addView(card)
+        }
+        setContentView(root)
+        progressUpdater = object : Runnable {
+            override fun run() {
+                if (isDestroyed) return
+                val dur = player.duration
+                if (dur > 0 && !seeking) {
+                    seek.progress = (player.currentPosition * 1000 / dur).toInt().coerceIn(0, 1000)
+                    timeView.text = "${fmt(player.currentPosition)} / ${fmt(dur)}"
+                }
+                playPause.text = getString(if (player.isPlaying) R.string.player_pause else R.string.player_play)
+                handler.postDelayed(this, 500)
+            }
+        }.also { handler.post(it) }
+        bridge.screen = JSONObject().put("state", "rendered").put("mode", "media").put("job_id", job)
+    }
 
     private fun render(intent: Intent) {
         val bridge = DeviceBridge.current ?: return finish()
@@ -42,9 +148,7 @@ class DisplayActivity : Activity() {
         bridge.screenActivity = java.lang.ref.WeakReference(this)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         if (request.optString("mode") == "media") {
-            playerView = PlayerView(this).apply { player = bridge.media.player; useController = true }
-            setContentView(playerView)
-            bridge.screen = JSONObject().put("state", "rendered").put("mode", "media").put("job_id", job)
+            renderMediaPlayer(bridge)
             return
         }
         val (scroll, content) = Ui.screenFrame(this)
@@ -151,6 +255,9 @@ class DisplayActivity : Activity() {
     }
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        progressUpdater = null
+        try { metaListener?.let { playerView?.player?.removeListener(it) } } catch (_: Exception) { }
+        metaListener = null
         download?.cancel(true)
         worker.shutdownNow()
         playerView?.player = null
