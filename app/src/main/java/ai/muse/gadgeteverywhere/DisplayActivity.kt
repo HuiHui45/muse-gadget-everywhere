@@ -39,10 +39,22 @@ class DisplayActivity : Activity() {
      *  right = player card with title/artist/progress/play-pause. */
     private fun renderMediaPlayer(bridge: DeviceBridge) {
         val player = bridge.media.player
+        // Full-screen background: mascot image铺满
+        val bg = android.widget.ImageView(this).apply {
+            try {
+                setImageResource(R.drawable.mascot)
+            } catch (_: Exception) { }
+            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        }
+        // Hidden player surface (audio only, no video surface needed)
         val surface = PlayerView(this).apply {
             this.player = player
             useController = false
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+            layoutParams = android.widget.FrameLayout.LayoutParams(1, 1)
         }
         playerView = surface
 
@@ -99,21 +111,19 @@ class DisplayActivity : Activity() {
             setOnClickListener { finish() }
         }
         val card = Ui.card(this).apply {
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = dp(24)
+            val cardWidth = (resources.displayMetrics.widthPixels * 0.42).toInt()
+            layoutParams = android.widget.FrameLayout.LayoutParams(cardWidth, android.widget.FrameLayout.LayoutParams.WRAP_CONTENT).apply {
+                gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.END
+                marginEnd = dp(48)
             }
-            gravity = android.view.Gravity.CENTER_VERTICAL
             addView(titleView)
             addView(artistView)
             addView(seek)
             addView(timeView)
             addView(Ui.actions(this@DisplayActivity, playPause, close))
         }
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-            setBackgroundColor(getColor(R.color.bg))
-            setPadding(dp(32), dp(32), dp(32), dp(32))
+        val root = android.widget.FrameLayout(this).apply {
+            addView(bg)
             addView(surface)
             addView(card)
         }
