@@ -8,7 +8,7 @@
 >
 > 如需原版功能，请前往上游仓库。
 
-**Bring Muse to Android hardware.** An open-source runtime that turns Android phones, tablets and TVs into programmable Muse gadgets: display, media, voice, camera and local automation, according to each device’s capabilities. Build new uses with Kotlin and Python. No root. No Termux.
+**把 Muse 带到安卓硬件上。** 开源运行时，把安卓手机、平板、电视变成可编程的 Muse 小工具：显示、媒体、语音、相机和本地自动化，按设备能力来。用 Kotlin 和 Python 构建新用途。无需 root，无需 Termux。
 
 [![Release](https://img.shields.io/github/v/release/hypery11/muse-gadget-everywhere?color=6eb4ff)](https://github.com/hypery11/muse-gadget-everywhere/releases/latest)
 [![Build](https://github.com/hypery11/muse-gadget-everywhere/actions/workflows/ci.yml/badge.svg)](https://github.com/hypery11/muse-gadget-everywhere/actions/workflows/ci.yml)
