@@ -56,8 +56,9 @@ object SpeechOverlay {
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            gravity = Gravity.BOTTOM or Gravity.END
             y = app.dp(64)
+            x = app.dp(48)
         }
         try {
             wm.addView(row, params)
