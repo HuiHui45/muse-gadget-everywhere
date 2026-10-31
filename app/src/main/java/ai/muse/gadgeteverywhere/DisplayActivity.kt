@@ -40,7 +40,8 @@ class DisplayActivity : Activity() {
     private fun renderMediaPlayer(bridge: DeviceBridge) {
         val player = bridge.media.player
         val mascot = try {
-            BitmapFactory.decodeResource(resources, R.drawable.mascot)
+            val bmp = BitmapFactory.decodeResource(resources, R.drawable.mascot)
+            bmp?.let { android.graphics.drawable.BitmapDrawable(resources, it) }
         } catch (_: Exception) { null }
         val surface = PlayerView(this).apply {
             this.player = player
